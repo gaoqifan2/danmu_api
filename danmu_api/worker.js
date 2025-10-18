@@ -104,7 +104,7 @@ function resolveYoukuConcurrency(env) {
   return Math.min(DEFAULT_YOUKU_CONCURRENCY, 16);
 }
 
-const DEFAULT_SOURCE_ORDER = "金蝉,tencent,vod,360，renren,hanjutv"; // 默认 源排序（不包含tencent，需要时请通过SOURCE_ORDER环境变量添加）
+const DEFAULT_SOURCE_ORDER = "金蝉,tencent,vod,360,renren,hanjutv"; // 默认 源排序（不包含tencent，需要时请通过SOURCE_ORDER环境变量添加）
 let sourceOrderArr = [];
 
 function resolveSourceOrder(env, deployPlatform) {
