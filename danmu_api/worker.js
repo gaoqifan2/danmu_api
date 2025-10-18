@@ -43,7 +43,7 @@ function resolveOtherServer(env) {
   return DEFAULT_OTHER_SERVER;
 }
 
-const DEFAULT_VOD_SERVERS = "vod@https://www.caiji.cyou"; // 默认 vod站点配置，格式：名称@URL,名称@URL
+const DEFAULT_VOD_SERVERS = "金蝉@https://zy.jinchancaiji.com"; // 默认 vod站点配置，格式：名称@URL,名称@URL
 let vodServers = [];
 
 function resolveVodServers(env) {
@@ -104,7 +104,7 @@ function resolveYoukuConcurrency(env) {
   return Math.min(DEFAULT_YOUKU_CONCURRENCY, 16);
 }
 
-const DEFAULT_SOURCE_ORDER = "360,vod,renren,hanjutv"; // 默认 源排序（不包含tencent，需要时请通过SOURCE_ORDER环境变量添加）
+const DEFAULT_SOURCE_ORDER = "金蝉,tencent,vod,renren,hanjutv"; // 默认 源排序（不包含tencent，需要时请通过SOURCE_ORDER环境变量添加）
 let sourceOrderArr = [];
 
 function resolveSourceOrder(env, deployPlatform) {
@@ -121,7 +121,7 @@ function resolveSourceOrder(env, deployPlatform) {
   }
 
   // 解析并校验 sourceOrder（移除 vod2，因为已合并到 vod）
-  const allowedSources = ['360', 'vod', "tencent", 'renren', "hanjutv", "bahamut"];
+  const allowedSources = ['jinchan','360', 'vod', "tencent", 'renren', "hanjutv", "bahamut"];
 
   // 转换为数组并去除空格，过滤无效项
   const orderArr = sourceOrder
