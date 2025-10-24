@@ -2068,52 +2068,33 @@ function parseFileName(fileName) {
 function cleanMovieFileName(fileName) {
   if (!fileName) return '';
   
-  console.log(`[清理前] ${fileName}`); // 调试日志
+  console.log(`[清理前] ${fileName}`);
   
-  let cleaned = fileName.trim();
-  
-  // 第一步：移除所有已知的技术信息（使用精确匹配）
-  const technicalPatterns = [
-    // 分辨率和质量
-    /\b(2160p|1080p|720p|4K|UHD|HD|FHD)\b/gi,
-    // 来源和格式
-    /\b(BluRay|REMUX|WEB-DL|HDRip|BRRip|DVD)\b/gi,
-    // 视频编码
-    /\b(HEVC|x264|x265|H\.264|H\.265|AVC)\b/gi,
-    // 音频编码
-    /\b(DTS-HD|DTS-HDMA|DTS|AC3|DD5\.1|AAC|FLAC|MP3)\b/gi,
-    // 语言
-    /\b(JAPANESE|CHINESE|ENGLISH|KOREAN|FRENCH|SPANISH)\b/gi,
-    // HDR相关
-    /\b(HDR|SDR|DV|Dolby Vision)\b/gi,
-    // 发布组（在末尾的）
-    /-\s*[A-Za-z0-9]+$/gi,
-  ];
-  
-  technicalPatterns.forEach(pattern => {
-    cleaned = cleaned.replace(pattern, '');
-  });
-  
-  // 第二步：处理特殊字符
-  cleaned = cleaned
-    .replace(/[\._]/g, ' ') // 点号和下划线转空格
-    .replace(/\s+/g, ' ')   // 多个空格合并为一个
+  // 移除所有技术信息，只保留中文/英文标题和年份
+  let cleaned = fileName
+    // 移除所有已知技术标记
+    .replace(/(2160p|1080p|720p|4K|UHD|HD|FHD|HQ)/gi, '')
+    .replace(/(25fps|30fps|60fps|120fps)/gi, '')
+    .replace(/(BluRay|REMUX|WEB-DL|WEBRip|HDRip|BRRip)/gi, '')
+    .replace(/(H265|HEVC|x265|H264|x264|AVC|10bit|8bit)/gi, '')
+    .replace(/(DDP5\.1|DDP|DTS-HDMA|DTS-HD|DTS|AC3|AAC|FLAC)/gi, '')
+    .replace(/(JAPANESE|CHINESE|ENGLISH|KOREAN)/gi, '')
+    .replace(/(HDR|SDR|DV|Dolby Vision)/gi, '')
+    .replace(/-\s*[A-Za-z0-9]+$/, '')
+    // 处理特殊字符
+    .replace(/[\._]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
   
-  // 第三步：提取标题和年份
-  const titleYearMatch = cleaned.match(/^(.+?)\s*(\d{4})?\s*$/);
-  if (titleYearMatch) {
-    let title = titleYearMatch[1].trim();
-    const year = titleYearMatch[2];
-    
-    // 再次清理标题中可能残留的技术信息
-    title = title.replace(/\b(MA|5\.1|7\.1|DREAMHD)\b/gi, '').trim();
-    
-    // 重新组合
-    cleaned = year ? `${title} (${year})` : title;
+  // 提取年份并格式化
+  const yearMatch = cleaned.match(/\b(19|20)\d{2}\b/);
+  if (yearMatch) {
+    const year = yearMatch[0];
+    const title = cleaned.replace(/\s*\b(19|20)\d{2}\b\s*/, '').trim();
+    cleaned = `${title} (${year})`;
   }
   
-  console.log(`[清理后] ${cleaned}`); // 调试日志
+  console.log(`[清理后] ${cleaned}`);
   return cleaned;
 }
 
