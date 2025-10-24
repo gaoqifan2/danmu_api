@@ -1267,7 +1267,6 @@ function simplized(cc){
 // =====================
 
 // 查询360kan影片信息
-// 查询360kan影片信息（修正版，过滤赏析/解说类结果）
 async function get360Animes(title) {
   try {
     const response = await httpGet(
@@ -1275,8 +1274,7 @@ async function get360Animes(title) {
       {
         headers: {
           "Content-Type": "application/json",
-          "User-Agent":
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
         },
       }
     );
@@ -1285,23 +1283,8 @@ async function get360Animes(title) {
     log("info", `360kan response: ${JSON.stringify(data)}`);
 
     let animes = [];
-    if (data?.data?.longData?.rows) {
+    if ('rows' in data.data.longData) {
       animes = data.data.longData.rows;
-
-      // ✅ 过滤“赏析”“解说”“讲解”“分析”等非正片条目
-      const before = animes.length;
-      animes = animes.filter((r) => {
-        const cleanTitle = (r.titleTxt || "").replace(/<[^>]+>/g, "");
-        return !/赏析|解说|讲解|分析|幕后|花絮|cut|片段|解析/.test(cleanTitle);
-      });
-      const after = animes.length;
-
-      if (before !== after) {
-        log(
-          "info",
-          `[360过滤] 已移除 ${before - after} 个“赏析/解说”条目，保留 ${after} 个结果`
-        );
-      }
     }
 
     log("info", `360kan animes.length: ${animes.length}`);
@@ -1316,7 +1299,6 @@ async function get360Animes(title) {
     return [];
   }
 }
-
 
 // 查询360kan综艺详情
 async function get360Zongyi(title, entId, site, year) {
@@ -2032,83 +2014,87 @@ const extractTitle = (title) => {
   const match = title.match(/【(.*?)】/);  // 匹配【】中的内容
   return match ? match[1] : null;  // 返回方括号中的内容，若没有匹配到，则返回null
 };
-function cleanMovieFileName(fileName) {
-  if (!fileName) return '';
-  
-  console.log(`[清理前] ${fileName}`);
-  
-  // 如果已经包含年份格式，直接返回
-  if (fileName.includes('(') && /\d{4}\)/.test(fileName)) {
-    return fileName;
-  }
-  
-  // 否则进行基本清理
-  const cleaned = fileName
-    .replace(/[\._]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  
-  console.log(`[清理后] ${cleaned}`);
-  return cleaned;
-}
 
+
+
+// 解析fileName，提取动漫名称和平台偏好
 function parseFileName(fileName) {
   if (!fileName || typeof fileName !== 'string') {
     return { cleanFileName: '', preferredPlatform: '' };
   }
 
   const atIndex = fileName.indexOf('@');
-  let coreFileName = fileName;
-  let platform = '';
-
-  // 如果有@符号，分离平台信息
-  if (atIndex !== -1) {
-    coreFileName = fileName.substring(0, atIndex).trim();
-    platform = fileName.substring(atIndex + 1).trim();
+  if (atIndex === -1) {
+    // 没有@符号，直接返回原文件名
+    return { cleanFileName: fileName.trim(), preferredPlatform: '' };
   }
 
-  // 解析 S01E02 格式
-  let title = coreFileName;
-  let season = null;
-  let episode = null;
+  // 找到@符号，需要分离平台标识
+  const beforeAt = fileName.substring(0, atIndex).trim();
+  const afterAt = fileName.substring(atIndex + 1).trim();
+
+  // 优先检查电视剧季集信息（SxxExx格式）
+  const seasonEpisodeMatch = beforeAt.match(/^(.+?)\s+(S\d+E\d+)$/i) || afterAt.match(/^(.+?)\s+(S\d+E\d+)$/i);
   
-  // 匹配 S01E02 或 s01e02 格式
-  const seasonEpisodeMatch = coreFileName.match(/[sS](\d+)[eE](\d+)/);
   if (seasonEpisodeMatch) {
-    season = parseInt(seasonEpisodeMatch[1]);
-    episode = parseInt(seasonEpisodeMatch[2]);
-    // 从文件名中移除季集信息得到纯标题
-    title = coreFileName.replace(/[sS]\d+[eE]\d+/, '').replace(/\.$/, '').trim();
-  }
-
-  // 核心改进：直接按点号分割，取第一部分作为名称
-  const dotIndex = title.indexOf('.');
-  let cleanName = title;
-  
-  if (dotIndex !== -1) {
-    // 取第一个点号之前的部分作为核心名称
-    cleanName = title.substring(0, dotIndex).trim();
+    // 电视剧格式：动漫名称 S01E01@平台 或 动漫名称@平台 S01E01
+    const title = seasonEpisodeMatch[1];
+    const seasonEpisode = seasonEpisodeMatch[2];
     
-    // 尝试提取年份（第一个点号后的4位数字）
-    const yearMatch = title.substring(dotIndex + 1).match(/(\d{4})/);
-    if (yearMatch) {
-      cleanName = `${cleanName} (${yearMatch[1]})`;
+    // 确定平台在@前还是@后
+    let platform = '';
+    if (beforeAt.includes(seasonEpisode)) {
+      platform = afterAt.replace(seasonEpisode, '').trim();
+    } else {
+      platform = beforeAt.replace(title, '').replace(seasonEpisode, '').trim();
     }
+    
+    return {
+      cleanFileName: `${title} ${seasonEpisode}`,
+      preferredPlatform: normalizePlatformName(platform)
+    };
   }
 
-  // 如果上面没提取到年份，再尝试整体清理
-  if (!cleanName.includes('(')) {
-    cleanName = cleanMovieFileName(cleanName);
+  // 检查电影年份信息（.年份 格式，如 .2014）
+  const yearMatch = beforeAt.match(/^(.+?)\.(\d{4})/);
+  if (yearMatch) {
+    // 电影格式：电影名.年份@平台
+    const title = yearMatch[1].trim();
+    const year = yearMatch[2];
+    
+    return {
+      cleanFileName: beforeAt, // 保留完整的电影文件名包括年份和质量信息
+      preferredPlatform: normalizePlatformName(afterAt)
+    };
   }
 
+  // 普通格式：动漫名称@平台（没有季集或年份信息）
   return {
-    cleanFileName: cleanName,
-    preferredPlatform: normalizePlatformName(platform),
-    season: season,
-    episode: episode
+    cleanFileName: beforeAt,
+    preferredPlatform: normalizePlatformName(afterAt)
   };
 }
 
+// 平台名称标准化函数（保持不变）
+function normalizePlatformName(platform) {
+  if (!platform) return '';
+  
+  const platformMap = {
+    'bilibili': 'bilibili',
+    'bili': 'bilibili',
+    'B站': 'bilibili',
+    '爱奇艺': 'iqiyi',
+    'iqy': 'iqiyi',
+    '腾讯视频': 'tencent',
+    'tx': 'tencent',
+    '优酷': 'youku',
+    'yk': 'youku'
+    // 可以继续添加其他平台映射
+  };
+  
+  const normalized = platform.toLowerCase().trim();
+  return platformMap[normalized] || platform;
+}
 
 // 将用户输入的平台名称映射为标准平台名称
 function normalizePlatformName(inputPlatform) {
