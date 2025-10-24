@@ -2069,39 +2069,39 @@ function cleanMovieFileName(fileName) {
   
   let cleaned = fileName.trim();
   
-  // 移除常见的电影文件后缀和质量信息
+  // 首先移除所有技术信息和无关内容
   const patternsToRemove = [
-    // 视频格式
-    /\.(mp4|mkv|avi|mov|wmv|flv|webm|m4v)$/i,
-    // 质量信息
-    /\s*(1080p|720p|4k|2160p|HD|FHD|UHD|BluRay|DVD|WEB-DL|HDRip|BRRip)/gi,
+    // 语言信息
+    /\s*(JAPANESE|CHINESE|ENGLISH|KOREAN|FRENCH|SPANISH|RUSSIAN)/gi,
+    // 视频质量和编码
+    /\s*(2160p|1080p|720p|4K|UHD|HD|FHD|BluRay|REMUX|HEVC|x264|x265|H\.264|H\.265|AVC)/gi,
     // 音频编码
-    /\s*(AAC|AC3|DTS|DD5\.1|FLAC|MP3)/gi,
-    // 视频编码
-    /\s*(x264|x265|HEVC|AVC|H\.264|H\.265)/gi,
-    // 发布组信息（通常在方括号或圆括号中）
-    /\s*\[.*?\]/g,
-    /\s*\(.*?\)/g,
+    /\s*(DTS-HD|DTS|MA|AC3|DD5\.1|AAC|FLAC|MP3)/gi,
+    // 发布组和特殊标记
+    /\s*-\s*[A-Z0-9]+$/gi, // 移除末尾的发布组标记如 -FGT
+    /\s*[\._]\s*/g, // 处理点号和下划线
   ];
   
   patternsToRemove.forEach(pattern => {
-    if (pattern === /\s*\[.*?\]/g || pattern === /\s*\(.*?\)/g) {
-      // 对于括号，先移除但保留年份括号
-      cleaned = cleaned.replace(pattern, '');
-    } else {
-      cleaned = cleaned.replace(pattern, '');
-    }
+    cleaned = cleaned.replace(pattern, '');
   });
   
-  // 处理特殊字符和多余空格
+  // 移除括号中的技术信息（但保留年份）
+  cleaned = cleaned.replace(/\([^)]*(REMUX|HEVC|DTS|MA|AC3)[^)]*\)/gi, '');
+  
+  // 处理多余的空白字符
   cleaned = cleaned
-    .replace(/[\._]/g, ' ') // 将下划线和点替换为空格
-    .replace(/\s{2,}/g, ' ') // 多个空格合并为一个
+    .replace(/\s{2,}/g, ' ')
     .trim();
   
-  // 处理年份信息 - 保留年份但标准化格式（只在没有括号时添加）
-  if (cleaned.match(/\b(19|20)\d{2}\b/) && !cleaned.match(/\(\d{4}\)/)) {
-    cleaned = cleaned.replace(/(\b(19|20)\d{2}\b)/, '($1)');
+  // 保留年份信息（如果存在）
+  const yearMatch = cleaned.match(/\b(19|20)\d{2}\b/);
+  if (yearMatch) {
+    const year = yearMatch[0];
+    // 提取主要标题（移除年份后的部分）
+    const mainTitle = cleaned.replace(/\s*\b(19|20)\d{2}\b\s*/, '').trim();
+    // 重新组合为 "标题 (年份)" 格式
+    cleaned = `${mainTitle} (${year})`;
   }
   
   return cleaned.trim();
