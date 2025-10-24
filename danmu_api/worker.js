@@ -2083,36 +2083,45 @@ function parseFileName(fileName) {
 }
 
 // 新增：清理电影文件名的函数
-function cleanMovieFileName(fileName) {
-  if (!fileName) return '';
-  
-  console.log(`[清理前] ${fileName}`);
-  
-  // 更保守的清理策略，只移除真正的技术标记
-  let cleaned = fileName
-    // 只移除明确的技术标记，保留主要标题
-    .replace(/(2160p|1080p|720p|4K|UHD|HD|FHD|HQ)\b/gi, '')
-    .replace(/(BluRay|REMUX|WEB-DL|WEBRip|HDRip|BRRip)\b/gi, '')
-    .replace(/(H265|HEVC|x265|H264|x264|AVC)\b/gi, '')
-    .replace(/(DDP5\.1|DTS-HDMA|DTS-HD|DTS|AC3|AAC|FLAC)\b/gi, '')
-    // 保留数字和主要标题结构
-    .replace(/-\s*[A-Za-z0-9]+$/, '')
-    // 处理特殊字符但保留核心内容
-    .replace(/[\._]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  
-  // 提取年份并格式化，但保留原始标题结构
-  const yearMatch = cleaned.match(/\b(19|20)\d{2}\b/);
-  if (yearMatch) {
-    const year = yearMatch[0];
-    // 更智能地移除年份，避免破坏标题结构
-    const title = cleaned.replace(/\s*\b(19|20)\d{2}\b\s*/, ' ').trim();
-    cleaned = `${title} (${year})`;
+function parseFileName(fileName) {
+  if (!fileName || typeof fileName !== 'string') {
+    return { cleanFileName: '', preferredPlatform: '' };
   }
+
+  const atIndex = fileName.indexOf('@');
+  let coreFileName = fileName;
+  let platform = '';
+
+  // 如果有@符号，分离平台信息
+  if (atIndex !== -1) {
+    coreFileName = fileName.substring(0, atIndex).trim();
+    platform = fileName.substring(atIndex + 1).trim();
+  }
+
+  // 核心改进：直接按点号分割，取第一部分作为名称
+  const dotIndex = coreFileName.indexOf('.');
+  let cleanName = coreFileName;
   
-  console.log(`[清理后] ${cleaned}`);
-  return cleaned;
+  if (dotIndex !== -1) {
+    // 取第一个点号之前的部分作为核心名称
+    cleanName = coreFileName.substring(0, dotIndex).trim();
+    
+    // 尝试提取年份（第一个点号后的4位数字）
+    const yearMatch = coreFileName.substring(dotIndex + 1).match(/(\d{4})/);
+    if (yearMatch) {
+      cleanName = `${cleanName} (${yearMatch[1]})`;
+    }
+  }
+
+  // 如果上面没提取到年份，再尝试整体清理
+  if (!cleanName.includes('(')) {
+    cleanName = cleanMovieFileName(cleanName);
+  }
+
+  return {
+    cleanFileName: cleanName,
+    preferredPlatform: normalizePlatformName(platform)
+  };
 }
 
 // 将用户输入的平台名称映射为标准平台名称
