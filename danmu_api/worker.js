@@ -1267,6 +1267,7 @@ function simplized(cc){
 // =====================
 
 // 查询360kan影片信息
+// 查询360kan影片信息（修正版，过滤赏析/解说类结果）
 async function get360Animes(title) {
   try {
     const response = await httpGet(
@@ -1274,7 +1275,8 @@ async function get360Animes(title) {
       {
         headers: {
           "Content-Type": "application/json",
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
         },
       }
     );
@@ -1283,8 +1285,23 @@ async function get360Animes(title) {
     log("info", `360kan response: ${JSON.stringify(data)}`);
 
     let animes = [];
-    if ('rows' in data.data.longData) {
+    if (data?.data?.longData?.rows) {
       animes = data.data.longData.rows;
+
+      // ✅ 过滤“赏析”“解说”“讲解”“分析”等非正片条目
+      const before = animes.length;
+      animes = animes.filter((r) => {
+        const cleanTitle = (r.titleTxt || "").replace(/<[^>]+>/g, "");
+        return !/赏析|解说|讲解|分析|幕后|花絮|cut|片段|解析/.test(cleanTitle);
+      });
+      const after = animes.length;
+
+      if (before !== after) {
+        log(
+          "info",
+          `[360过滤] 已移除 ${before - after} 个“赏析/解说”条目，保留 ${after} 个结果`
+        );
+      }
     }
 
     log("info", `360kan animes.length: ${animes.length}`);
@@ -1299,6 +1316,7 @@ async function get360Animes(title) {
     return [];
   }
 }
+
 
 // 查询360kan综艺详情
 async function get360Zongyi(title, entId, site, year) {
