@@ -2067,16 +2067,30 @@ function parseFileName(fileName) {
     platform = fileName.substring(atIndex + 1).trim();
   }
 
+  // 解析 S01E02 格式
+  let title = coreFileName;
+  let season = null;
+  let episode = null;
+  
+  // 匹配 S01E02 或 s01e02 格式
+  const seasonEpisodeMatch = coreFileName.match(/[sS](\d+)[eE](\d+)/);
+  if (seasonEpisodeMatch) {
+    season = parseInt(seasonEpisodeMatch[1]);
+    episode = parseInt(seasonEpisodeMatch[2]);
+    // 从文件名中移除季集信息得到纯标题
+    title = coreFileName.replace(/[sS]\d+[eE]\d+/, '').replace(/\.$/, '').trim();
+  }
+
   // 核心改进：直接按点号分割，取第一部分作为名称
-  const dotIndex = coreFileName.indexOf('.');
-  let cleanName = coreFileName;
+  const dotIndex = title.indexOf('.');
+  let cleanName = title;
   
   if (dotIndex !== -1) {
     // 取第一个点号之前的部分作为核心名称
-    cleanName = coreFileName.substring(0, dotIndex).trim();
+    cleanName = title.substring(0, dotIndex).trim();
     
     // 尝试提取年份（第一个点号后的4位数字）
-    const yearMatch = coreFileName.substring(dotIndex + 1).match(/(\d{4})/);
+    const yearMatch = title.substring(dotIndex + 1).match(/(\d{4})/);
     if (yearMatch) {
       cleanName = `${cleanName} (${yearMatch[1]})`;
     }
@@ -2089,10 +2103,11 @@ function parseFileName(fileName) {
 
   return {
     cleanFileName: cleanName,
-    preferredPlatform: normalizePlatformName(platform)
+    preferredPlatform: normalizePlatformName(platform),
+    season: season,
+    episode: episode
   };
 }
-
 
 
 // 将用户输入的平台名称映射为标准平台名称
