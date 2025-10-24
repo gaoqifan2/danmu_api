@@ -2088,63 +2088,31 @@ function cleanMovieFileName(fileName) {
   
   console.log(`[清理前] ${fileName}`);
   
-  // 移除所有技术信息，只保留中文/英文标题和年份
+  // 更保守的清理策略，只移除真正的技术标记
   let cleaned = fileName
-    // 移除所有已知技术标记
-    .replace(/(2160p|1080p|720p|4K|UHD|HD|FHD|HQ)/gi, '')
-    .replace(/(25fps|30fps|60fps|120fps)/gi, '')
-    .replace(/(BluRay|REMUX|WEB-DL|WEBRip|HDRip|BRRip)/gi, '')
-    .replace(/(H265|HEVC|x265|H264|x264|AVC|10bit|8bit)/gi, '')
-    .replace(/(DDP5\.1|DDP|DTS-HDMA|DTS-HD|DTS|AC3|AAC|FLAC)/gi, '')
-    .replace(/(JAPANESE|CHINESE|ENGLISH|KOREAN)/gi, '')
-    .replace(/(HDR|SDR|DV|Dolby Vision)/gi, '')
+    // 只移除明确的技术标记，保留主要标题
+    .replace(/(2160p|1080p|720p|4K|UHD|HD|FHD|HQ)\b/gi, '')
+    .replace(/(BluRay|REMUX|WEB-DL|WEBRip|HDRip|BRRip)\b/gi, '')
+    .replace(/(H265|HEVC|x265|H264|x264|AVC)\b/gi, '')
+    .replace(/(DDP5\.1|DTS-HDMA|DTS-HD|DTS|AC3|AAC|FLAC)\b/gi, '')
+    // 保留数字和主要标题结构
     .replace(/-\s*[A-Za-z0-9]+$/, '')
-    // 处理特殊字符
+    // 处理特殊字符但保留核心内容
     .replace(/[\._]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   
-  // 提取年份并格式化
+  // 提取年份并格式化，但保留原始标题结构
   const yearMatch = cleaned.match(/\b(19|20)\d{2}\b/);
   if (yearMatch) {
     const year = yearMatch[0];
-    const title = cleaned.replace(/\s*\b(19|20)\d{2}\b\s*/, '').trim();
+    // 更智能地移除年份，避免破坏标题结构
+    const title = cleaned.replace(/\s*\b(19|20)\d{2}\b\s*/, ' ').trim();
     cleaned = `${title} (${year})`;
   }
   
   console.log(`[清理后] ${cleaned}`);
   return cleaned;
-}
-
-function extractMovieCoreName(fileName) {
-  const cleaned = cleanMovieFileName(fileName);
-  
-  // 移除年份信息获取纯名称
-  const withoutYear = cleaned.replace(/\s*\(\d{4}\)/, '').trim();
-  
-  // 移除可能残留的技术信息
-  const techPatterns = [
-    /\s*(1080p|720p|4k|2160p|HD|FHD|UHD)/gi,
-    /\s*(BluRay|DVD|WEB-DL|HDRip|BRRip)/gi,
-    /\s*(x264|x265|HEVC|AVC)/gi,
-    /\s*(AAC|AC3|DTS|DD5\.1)/gi,
-    /\s*-\s*$/ // 移除末尾的短横线
-  ];
-  
-  let coreName = withoutYear;
-  techPatterns.forEach(pattern => {
-    coreName = coreName.replace(pattern, '').trim();
-  });
-  
-  // 提取年份
-  const yearMatch = cleaned.match(/\b(19|20)(\d{2})\b/);
-  
-  return {
-    coreName: coreName.trim(),
-    fullCleanedName: cleaned,
-    hasYear: !!yearMatch,
-    year: yearMatch ? yearMatch[0] : null
-  };
 }
 
 // 将用户输入的平台名称映射为标准平台名称
