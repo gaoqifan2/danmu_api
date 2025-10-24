@@ -2033,56 +2033,6 @@ const extractTitle = (title) => {
   return match ? match[1] : null;  // 返回方括号中的内容，若没有匹配到，则返回null
 };
 
-
-
-// 解析fileName，提取动漫名称和平台偏好
-function parseFileName(fileName) {
-  if (!fileName || typeof fileName !== 'string') {
-    return { cleanFileName: '', preferredPlatform: '' };
-  }
-
-  const atIndex = fileName.indexOf('@');
-  if (atIndex === -1) {
-    // 没有@符号，直接返回清理后的文件名
-    return { cleanFileName: cleanMovieFileName(fileName), preferredPlatform: '' };
-  }
-
-  // 找到@符号，需要分离平台标识
-  const beforeAt = fileName.substring(0, atIndex).trim();
-  const afterAt = fileName.substring(atIndex + 1).trim();
-
-  // 改进的电影季集信息匹配 - 支持更多格式
-  const seasonEpisodeMatch = afterAt.match(/^(\w+)\s+(S\d+E\d+|Season\s*\d+\s*Episode\s*\d+|\d+x\d+)$/i);
-  if (seasonEpisodeMatch) {
-    // 格式：电影名称@平台 S01E01 / Season 1 Episode 1 / 1x01
-    const platform = seasonEpisodeMatch[1];
-    const seasonEpisode = seasonEpisodeMatch[2];
-    return {
-      cleanFileName: cleanMovieFileName(`${beforeAt} ${seasonEpisode}`),
-      preferredPlatform: normalizePlatformName(platform)
-    };
-  } else {
-    // 检查@符号前面是否有季集信息或年份信息
-    const beforeAtMatch = beforeAt.match(/^(.+?)\s+((S\d+E\d+|Season\s*\d+\s*Episode\s*\d+|\d+x\d+)|(\d{4}.*))$/i);
-    if (beforeAtMatch) {
-      // 格式：电影名称 S01E01@平台 或 电影名称 2023@平台
-      const title = beforeAtMatch[1];
-      const extraInfo = beforeAtMatch[2];
-      return {
-        cleanFileName: cleanMovieFileName(`${title} ${extraInfo}`),
-        preferredPlatform: normalizePlatformName(afterAt)
-      };
-    } else {
-      // 格式：电影名称@平台（没有季集信息）
-      return {
-        cleanFileName: cleanMovieFileName(beforeAt),
-        preferredPlatform: normalizePlatformName(afterAt)
-      };
-    }
-  }
-}
-
-// 新增：清理电影文件名的函数
 function parseFileName(fileName) {
   if (!fileName || typeof fileName !== 'string') {
     return { cleanFileName: '', preferredPlatform: '' };
@@ -2123,6 +2073,8 @@ function parseFileName(fileName) {
     preferredPlatform: normalizePlatformName(platform)
   };
 }
+
+
 
 // 将用户输入的平台名称映射为标准平台名称
 function normalizePlatformName(inputPlatform) {
