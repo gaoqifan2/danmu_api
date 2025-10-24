@@ -2033,67 +2033,35 @@ function parseFileName(fileName) {
   const beforeAt = fileName.substring(0, atIndex).trim();
   const afterAt = fileName.substring(atIndex + 1).trim();
 
-  // 优先检查电视剧季集信息（SxxExx格式）
-  const seasonEpisodeMatch = beforeAt.match(/^(.+?)\s+(S\d+E\d+)$/i) || afterAt.match(/^(.+?)\s+(S\d+E\d+)$/i);
-  
+  // 检查@符号后面是否有季集信息（如 S01E01）
+  const seasonEpisodeMatch = afterAt.match(/^(\w+)\s+(S\d+E\d+)$/);
   if (seasonEpisodeMatch) {
-    // 电视剧格式：动漫名称 S01E01@平台 或 动漫名称@平台 S01E01
-    const title = seasonEpisodeMatch[1];
+    // 格式：动漫名称@平台 S01E01
+    const platform = seasonEpisodeMatch[1];
     const seasonEpisode = seasonEpisodeMatch[2];
-    
-    // 确定平台在@前还是@后
-    let platform = '';
-    if (beforeAt.includes(seasonEpisode)) {
-      platform = afterAt.replace(seasonEpisode, '').trim();
-    } else {
-      platform = beforeAt.replace(title, '').replace(seasonEpisode, '').trim();
-    }
-    
     return {
-      cleanFileName: `${title} ${seasonEpisode}`,
+      cleanFileName: `${beforeAt} ${seasonEpisode}`,
       preferredPlatform: normalizePlatformName(platform)
     };
+  } else {
+    // 检查@符号前面是否有季集信息
+    const beforeAtMatch = beforeAt.match(/^(.+?)\s+(S\d+E\d+)$/);
+    if (beforeAtMatch) {
+      // 格式：动漫名称 S01E01@平台
+      const title = beforeAtMatch[1];
+      const seasonEpisode = beforeAtMatch[2];
+      return {
+        cleanFileName: `${title} ${seasonEpisode}`,
+        preferredPlatform: normalizePlatformName(afterAt)
+      };
+    } else {
+      // 格式：动漫名称@平台（没有季集信息）
+      return {
+        cleanFileName: beforeAt,
+        preferredPlatform: normalizePlatformName(afterAt)
+      };
+    }
   }
-
-  // 检查电影年份信息（.年份 格式，如 .2014）
-  const yearMatch = beforeAt.match(/^(.+?)\.(\d{4})/);
-  if (yearMatch) {
-    // 电影格式：电影名.年份@平台
-    const title = yearMatch[1].trim();
-    const year = yearMatch[2];
-    
-    return {
-      cleanFileName: beforeAt, // 保留完整的电影文件名包括年份和质量信息
-      preferredPlatform: normalizePlatformName(afterAt)
-    };
-  }
-
-  // 普通格式：动漫名称@平台（没有季集或年份信息）
-  return {
-    cleanFileName: beforeAt,
-    preferredPlatform: normalizePlatformName(afterAt)
-  };
-}
-
-// 平台名称标准化函数（保持不变）
-function normalizePlatformName(platform) {
-  if (!platform) return '';
-  
-  const platformMap = {
-    'bilibili': 'bilibili',
-    'bili': 'bilibili',
-    'B站': 'bilibili',
-    '爱奇艺': 'iqiyi',
-    'iqy': 'iqiyi',
-    '腾讯视频': 'tencent',
-    'tx': 'tencent',
-    '优酷': 'youku',
-    'yk': 'youku'
-    // 可以继续添加其他平台映射
-  };
-  
-  const normalized = platform.toLowerCase().trim();
-  return platformMap[normalized] || platform;
 }
 
 // 将用户输入的平台名称映射为标准平台名称
