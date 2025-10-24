@@ -2063,49 +2063,60 @@ function parseFileName(fileName) {
     }
   }
 }
+
 // 新增：清理电影文件名的函数
 function cleanMovieFileName(fileName) {
   if (!fileName) return '';
   
+  console.log(`[清理前] ${fileName}`); // 调试日志
+  
   let cleaned = fileName.trim();
   
-  // 首先移除所有技术信息和无关内容
-  const patternsToRemove = [
-    // 语言信息
-    /\s*(JAPANESE|CHINESE|ENGLISH|KOREAN|FRENCH|SPANISH|RUSSIAN)/gi,
-    // 视频质量和编码
-    /\s*(2160p|1080p|720p|4K|UHD|HD|FHD|BluRay|REMUX|HEVC|x264|x265|H\.264|H\.265|AVC)/gi,
+  // 第一步：移除所有已知的技术信息（使用精确匹配）
+  const technicalPatterns = [
+    // 分辨率和质量
+    /\b(2160p|1080p|720p|4K|UHD|HD|FHD)\b/gi,
+    // 来源和格式
+    /\b(BluRay|REMUX|WEB-DL|HDRip|BRRip|DVD)\b/gi,
+    // 视频编码
+    /\b(HEVC|x264|x265|H\.264|H\.265|AVC)\b/gi,
     // 音频编码
-    /\s*(DTS-HD|DTS|MA|AC3|DD5\.1|AAC|FLAC|MP3)/gi,
-    // 发布组和特殊标记
-    /\s*-\s*[A-Z0-9]+$/gi, // 移除末尾的发布组标记如 -FGT
-    /\s*[\._]\s*/g, // 处理点号和下划线
+    /\b(DTS-HD|DTS-HDMA|DTS|AC3|DD5\.1|AAC|FLAC|MP3)\b/gi,
+    // 语言
+    /\b(JAPANESE|CHINESE|ENGLISH|KOREAN|FRENCH|SPANISH)\b/gi,
+    // HDR相关
+    /\b(HDR|SDR|DV|Dolby Vision)\b/gi,
+    // 发布组（在末尾的）
+    /-\s*[A-Za-z0-9]+$/gi,
   ];
   
-  patternsToRemove.forEach(pattern => {
+  technicalPatterns.forEach(pattern => {
     cleaned = cleaned.replace(pattern, '');
   });
   
-  // 移除括号中的技术信息（但保留年份）
-  cleaned = cleaned.replace(/\([^)]*(REMUX|HEVC|DTS|MA|AC3)[^)]*\)/gi, '');
-  
-  // 处理多余的空白字符
+  // 第二步：处理特殊字符
   cleaned = cleaned
-    .replace(/\s{2,}/g, ' ')
+    .replace(/[\._]/g, ' ') // 点号和下划线转空格
+    .replace(/\s+/g, ' ')   // 多个空格合并为一个
     .trim();
   
-  // 保留年份信息（如果存在）
-  const yearMatch = cleaned.match(/\b(19|20)\d{2}\b/);
-  if (yearMatch) {
-    const year = yearMatch[0];
-    // 提取主要标题（移除年份后的部分）
-    const mainTitle = cleaned.replace(/\s*\b(19|20)\d{2}\b\s*/, '').trim();
-    // 重新组合为 "标题 (年份)" 格式
-    cleaned = `${mainTitle} (${year})`;
+  // 第三步：提取标题和年份
+  const titleYearMatch = cleaned.match(/^(.+?)\s*(\d{4})?\s*$/);
+  if (titleYearMatch) {
+    let title = titleYearMatch[1].trim();
+    const year = titleYearMatch[2];
+    
+    // 再次清理标题中可能残留的技术信息
+    title = title.replace(/\b(MA|5\.1|7\.1|DREAMHD)\b/gi, '').trim();
+    
+    // 重新组合
+    cleaned = year ? `${title} (${year})` : title;
   }
   
-  return cleaned.trim();
+  console.log(`[清理后] ${cleaned}`); // 调试日志
+  return cleaned;
 }
+
 function extractMovieCoreName(fileName) {
   const cleaned = cleanMovieFileName(fileName);
   
