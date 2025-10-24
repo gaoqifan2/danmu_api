@@ -2032,6 +2032,25 @@ const extractTitle = (title) => {
   const match = title.match(/【(.*?)】/);  // 匹配【】中的内容
   return match ? match[1] : null;  // 返回方括号中的内容，若没有匹配到，则返回null
 };
+function cleanMovieFileName(fileName) {
+  if (!fileName) return '';
+  
+  console.log(`[清理前] ${fileName}`);
+  
+  // 如果已经包含年份格式，直接返回
+  if (fileName.includes('(') && /\d{4}\)/.test(fileName)) {
+    return fileName;
+  }
+  
+  // 否则进行基本清理
+  const cleaned = fileName
+    .replace(/[\._]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  console.log(`[清理后] ${cleaned}`);
+  return cleaned;
+}
 
 function parseFileName(fileName) {
   if (!fileName || typeof fileName !== 'string') {
