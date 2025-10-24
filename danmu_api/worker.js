@@ -2025,43 +2025,116 @@ function parseFileName(fileName) {
 
   const atIndex = fileName.indexOf('@');
   if (atIndex === -1) {
-    // 没有@符号，直接返回原文件名
-    return { cleanFileName: fileName.trim(), preferredPlatform: '' };
+    // 没有@符号，直接返回清理后的文件名
+    return { cleanFileName: cleanMovieFileName(fileName), preferredPlatform: '' };
   }
 
   // 找到@符号，需要分离平台标识
   const beforeAt = fileName.substring(0, atIndex).trim();
   const afterAt = fileName.substring(atIndex + 1).trim();
 
-  // 检查@符号后面是否有季集信息（如 S01E01）
-  const seasonEpisodeMatch = afterAt.match(/^(\w+)\s+(S\d+E\d+)$/);
+  // 改进的电影季集信息匹配 - 支持更多格式
+  const seasonEpisodeMatch = afterAt.match(/^(\w+)\s+(S\d+E\d+|Season\s*\d+\s*Episode\s*\d+|\d+x\d+)$/i);
   if (seasonEpisodeMatch) {
-    // 格式：动漫名称@平台 S01E01
+    // 格式：电影名称@平台 S01E01 / Season 1 Episode 1 / 1x01
     const platform = seasonEpisodeMatch[1];
     const seasonEpisode = seasonEpisodeMatch[2];
     return {
-      cleanFileName: `${beforeAt} ${seasonEpisode}`,
+      cleanFileName: cleanMovieFileName(`${beforeAt} ${seasonEpisode}`),
       preferredPlatform: normalizePlatformName(platform)
     };
   } else {
-    // 检查@符号前面是否有季集信息
-    const beforeAtMatch = beforeAt.match(/^(.+?)\s+(S\d+E\d+)$/);
+    // 检查@符号前面是否有季集信息或年份信息
+    const beforeAtMatch = beforeAt.match(/^(.+?)\s+((S\d+E\d+|Season\s*\d+\s*Episode\s*\d+|\d+x\d+)|(\d{4}.*))$/i);
     if (beforeAtMatch) {
-      // 格式：动漫名称 S01E01@平台
+      // 格式：电影名称 S01E01@平台 或 电影名称 2023@平台
       const title = beforeAtMatch[1];
-      const seasonEpisode = beforeAtMatch[2];
+      const extraInfo = beforeAtMatch[2];
       return {
-        cleanFileName: `${title} ${seasonEpisode}`,
+        cleanFileName: cleanMovieFileName(`${title} ${extraInfo}`),
         preferredPlatform: normalizePlatformName(afterAt)
       };
     } else {
-      // 格式：动漫名称@平台（没有季集信息）
+      // 格式：电影名称@平台（没有季集信息）
       return {
-        cleanFileName: beforeAt,
+        cleanFileName: cleanMovieFileName(beforeAt),
         preferredPlatform: normalizePlatformName(afterAt)
       };
     }
   }
+}
+// 新增：清理电影文件名的函数
+function cleanMovieFileName(fileName) {
+  if (!fileName) return '';
+  
+  let cleaned = fileName.trim();
+  
+  // 移除常见的电影文件后缀和质量信息
+  const patternsToRemove = [
+    // 视频格式
+    /\.(mp4|mkv|avi|mov|wmv|flv|webm|m4v)$/i,
+    // 质量信息
+    /\s*(1080p|720p|4k|2160p|HD|FHD|UHD|BluRay|DVD|WEB-DL|HDRip|BRRip)/gi,
+    // 音频编码
+    /\s*(AAC|AC3|DTS|DD5\.1|FLAC|MP3)/gi,
+    // 视频编码
+    /\s*(x264|x265|HEVC|AVC|H\.264|H\.265)/gi,
+    // 发布组信息（通常在方括号或圆括号中）
+    /\s*\[.*?\]/g,
+    /\s*\(.*?\)/g,
+  ];
+  
+  patternsToRemove.forEach(pattern => {
+    if (pattern === /\s*\[.*?\]/g || pattern === /\s*\(.*?\)/g) {
+      // 对于括号，先移除但保留年份括号
+      cleaned = cleaned.replace(pattern, '');
+    } else {
+      cleaned = cleaned.replace(pattern, '');
+    }
+  });
+  
+  // 处理特殊字符和多余空格
+  cleaned = cleaned
+    .replace(/[\._]/g, ' ') // 将下划线和点替换为空格
+    .replace(/\s{2,}/g, ' ') // 多个空格合并为一个
+    .trim();
+  
+  // 处理年份信息 - 保留年份但标准化格式（只在没有括号时添加）
+  if (cleaned.match(/\b(19|20)\d{2}\b/) && !cleaned.match(/\(\d{4}\)/)) {
+    cleaned = cleaned.replace(/(\b(19|20)\d{2}\b)/, '($1)');
+  }
+  
+  return cleaned.trim();
+}
+function extractMovieCoreName(fileName) {
+  const cleaned = cleanMovieFileName(fileName);
+  
+  // 移除年份信息获取纯名称
+  const withoutYear = cleaned.replace(/\s*\(\d{4}\)/, '').trim();
+  
+  // 移除可能残留的技术信息
+  const techPatterns = [
+    /\s*(1080p|720p|4k|2160p|HD|FHD|UHD)/gi,
+    /\s*(BluRay|DVD|WEB-DL|HDRip|BRRip)/gi,
+    /\s*(x264|x265|HEVC|AVC)/gi,
+    /\s*(AAC|AC3|DTS|DD5\.1)/gi,
+    /\s*-\s*$/ // 移除末尾的短横线
+  ];
+  
+  let coreName = withoutYear;
+  techPatterns.forEach(pattern => {
+    coreName = coreName.replace(pattern, '').trim();
+  });
+  
+  // 提取年份
+  const yearMatch = cleaned.match(/\b(19|20)(\d{2})\b/);
+  
+  return {
+    coreName: coreName.trim(),
+    fullCleanedName: cleaned,
+    hasYear: !!yearMatch,
+    year: yearMatch ? yearMatch[0] : null
+  };
 }
 
 // 将用户输入的平台名称映射为标准平台名称
